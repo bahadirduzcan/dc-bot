@@ -6,6 +6,9 @@ const { SoundCloudPlugin } = require('@distube/soundcloud');
 const { loadCommands } = require('./handlers/commandHandler');
 const { loadEvents } = require('./handlers/eventHandler');
 const { setupMusicEvents } = require('./handlers/musicHandler');
+const fs = require('fs');
+
+const COOKIES_PATH = '/app/cookies.txt';
 
 function createBot() {
   // Discord Client oluştur
@@ -21,6 +24,11 @@ function createBot() {
   // Komutlar için Collection
   client.commands = new Collection();
 
+  // Cookie dosyası varsa yt-dlp'ye ver
+  const ytdlpOptions = fs.existsSync(COOKIES_PATH)
+    ? { cookies: COOKIES_PATH }
+    : {};
+
   // DisTube setup
   client.distube = new DisTube(client, {
     emitNewSongOnly: false,
@@ -28,7 +36,7 @@ function createBot() {
     emitAddListWhenCreatingQueue: true,
     nsfw: false,
     plugins: [
-      new YtDlpPlugin({ update: true }),
+      new YtDlpPlugin({ update: false, ytdlpOptions }),
       new SpotifyPlugin(),
       new SoundCloudPlugin(),
     ],

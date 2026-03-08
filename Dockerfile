@@ -17,15 +17,14 @@ RUN mkdir -p /app/node_modules/@distube/yt-dlp/bin && \
          -o /app/node_modules/@distube/yt-dlp/bin/yt-dlp && \
     chmod +x /app/node_modules/@distube/yt-dlp/bin/yt-dlp
 
-# YouTube bot korumasını atlatmak için iOS player client kullan
-RUN echo '--extractor-args "youtube:player_client=ios,web"' > /etc/yt-dlp.conf
-
 # Kaynak kodunu kopyala
 COPY . .
+
+# Entrypoint scriptini çalıştırılabilir yap
+RUN chmod +x /app/entrypoint.sh
 
 # Data klasörünü oluştur (volume mount noktası)
 RUN mkdir -p data
 
-# tini ile başlat: SIGTERM/SIGINT düzgün iletilir
-ENTRYPOINT ["/usr/bin/tini", "--"]
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["sh", "-c", "node deploy-commands.js && node src/index.js"]
