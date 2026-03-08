@@ -81,7 +81,7 @@ function buildArgs(extra = []) {
     '--no-warnings',
     '--socket-timeout', '20',
     '--retries', '2',
-    '--extractor-args', 'youtube:player_client=tv,android,ios',
+    '--extractor-args', 'youtube:player_client=web',
     ...extra,
   ];
   if (fs.existsSync(COOKIES_PATH)) args.push('--cookies', COOKIES_PATH);
@@ -103,14 +103,14 @@ function runYtdlp(args, timeoutMs = 45000) {
 
 function ytdlpGetStreamUrl(songUrl, timeoutMs = 45000) {
   return new Promise((resolve, reject) => {
-    // Stream için android client kullan (ses formatlarını destekliyor), tv client ses-only format döndürmüyor
+    // web client: PO token gerektirmiyor, standart formatlara erişim var
     const streamArgs = [
       '--no-warnings',
       '--socket-timeout', '20',
       '--retries', '2',
-      '--extractor-args', 'youtube:player_client=android,ios,web',
+      '--extractor-args', 'youtube:player_client=web',
       '--get-url',
-      '-f', '140/bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best',
+      '-f', 'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/18/best',
     ];
     if (fs.existsSync(COOKIES_PATH)) streamArgs.push('--cookies', COOKIES_PATH);
     if (process.env.YTDLP_PROXY) streamArgs.push('--proxy', process.env.YTDLP_PROXY);
