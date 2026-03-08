@@ -1,11 +1,10 @@
 /**
- * @distube/yt-dlp plugin'ini patch'ler:
- * - noCallHome kaldırılır (deprecated uyarısını giderir)
- * - preferFreeFormats kaldırılır
- * - resolve() sadece metadata alır, format seçmez
- * - getStreamURL() esnek format selector kullanır
- * - YTDLP_PROXY env varı ile proxy kullanır (sunucu IP engeli için zorunlu)
- * - /app/cookies.txt varsa cookie kullanır
+ * @distube/yt-dlp plugin patch:
+ * - noCallHome kaldırıldı
+ * - preferFreeFormats kaldırıldı
+ * - resolve(): noCheckFormats eklendi (datacenter IP'de format kontrol hatası önlenir)
+ * - getStreamURL(): esnek format selector
+ * - cookies + proxy desteği (runtime env vars)
  */
 const fs = require('fs');
 const PLUGIN_PATH = require('path').join(__dirname, 'node_modules/@distube/yt-dlp/dist/index.js');
@@ -15,7 +14,6 @@ let content = fs.readFileSync(PLUGIN_PATH, 'utf-8');
 const runtimeHelpers = `const _ytCookies = require('fs').existsSync('/app/cookies.txt') ? { cookies: '/app/cookies.txt' } : {};
     const _ytProxy = process.env.YTDLP_PROXY ? { proxy: process.env.YTDLP_PROXY } : {};`;
 
-// resolve() — sadece metadata, format seçimi yok
 const resolveOld = `const info = await json(url, {
       dumpSingleJson: true,
       noWarnings: true,
@@ -29,12 +27,12 @@ const resolveNew = `${runtimeHelpers}
     const info = await json(url, {
       dumpSingleJson: true,
       noWarnings: true,
+      noCheckFormats: true,
       skipDownload: true,
       ..._ytCookies,
       ..._ytProxy
     }).catch((e2) => {`;
 
-// getStreamURL() — esnek format, tüm senaryoları kapsar
 const streamOld = `const info = await json(song.url, {
       dumpSingleJson: true,
       noWarnings: true,
@@ -49,6 +47,7 @@ const streamNew = `${runtimeHelpers}
     const info = await json(song.url, {
       dumpSingleJson: true,
       noWarnings: true,
+      noCheckFormats: true,
       skipDownload: true,
       format: "bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best",
       ..._ytCookies,
