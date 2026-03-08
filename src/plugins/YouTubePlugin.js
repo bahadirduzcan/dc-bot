@@ -7,6 +7,53 @@ const fs = require('fs');
 const YTDLP_BIN = path.join(__dirname, '../../node_modules/@distube/yt-dlp/bin/yt-dlp');
 const COOKIES_PATH = process.env.YOUTUBE_COOKIES_PATH || '/app/cookies.txt';
 
+// Stream URL için Invidious (yt-dlp sunucu IP'sinden YouTube'a bağlanamıyor)
+const INVIDIOUS_INSTANCES = ['inv.riverside.rocks', 'iv.melmac.space'];
+
+function httpsGet(host, apiPath, timeoutMs = 12000) {
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: host,
+      path: apiPath,
+      method: 'GET',
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      timeout: timeoutMs,
+    }, (res) => {
+      if (res.statusCode !== 200) { res.resume(); return reject(new Error(`HTTP ${res.statusCode}`)); }
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); }
+        catch { reject(new Error('JSON parse hatası')); }
+      });
+    });
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+async function invGetStreamUrl(videoId) {
+  let lastErr;
+  for (const host of INVIDIOUS_INSTANCES) {
+    try {
+      const info = await httpsGet(host, `/api/v1/videos/${videoId}?fields=adaptiveFormats,formatStreams`);
+      // Önce audio-only formatlar
+      const audio = (info.adaptiveFormats || [])
+        .filter(f => f.type?.startsWith('audio/') && f.url)
+        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+      if (audio[0]?.url) return audio[0].url;
+      // Fallback: video+audio birleşik
+      const stream = (info.formatStreams || []).find(f => f.url);
+      if (stream?.url) return stream.url;
+      lastErr = new Error('Format bulunamadı');
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw new Error(`Invidious stream URL başarısız: ${lastErr?.message}`);
+}
+
 // ─── YouTube Data API v3 (arama için) ────────────────────────────────────────
 
 function youtubeApiRequest(apiPath) {
@@ -228,6 +275,14 @@ class YouTubePlugin extends PlayableExtractorPlugin {
   }
 
   async getStreamURL(song) {
+    const videoId = song.id || song.url.match(/(?:v=|youtu\.be\/)([^&?/]+)/)?.[1];
+    if (videoId) {
+      try {
+        return await invGetStreamUrl(videoId);
+      } catch (e) {
+        console.warn('[YouTubePlugin] Invidious stream başarısız, yt-dlp deneniyor:', e.message);
+      }
+    }
     return ytdlpGetStreamUrl(song.url);
   }
 
