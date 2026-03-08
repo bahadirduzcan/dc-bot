@@ -1,10 +1,11 @@
 /**
  * @distube/yt-dlp plugin'ini patch'ler:
  * - noCallHome kaldırılır (deprecated uyarısını giderir)
- * - preferFreeFormats kaldırılır (format hatasını giderir)
- * - resolve() ve getStreamURL() için açık format belirtilir
- * - runtime'da /app/cookies.txt varsa otomatik kullanır (auth için)
- * - runtime'da YTDLP_PROXY env varı varsa proxy kullanır
+ * - preferFreeFormats kaldırılır
+ * - resolve() sadece metadata alır, format seçmez
+ * - getStreamURL() esnek format selector kullanır
+ * - YTDLP_PROXY env varı ile proxy kullanır (sunucu IP engeli için zorunlu)
+ * - /app/cookies.txt varsa cookie kullanır
  */
 const fs = require('fs');
 const PLUGIN_PATH = require('path').join(__dirname, 'node_modules/@distube/yt-dlp/dist/index.js');
@@ -14,7 +15,7 @@ let content = fs.readFileSync(PLUGIN_PATH, 'utf-8');
 const runtimeHelpers = `const _ytCookies = require('fs').existsSync('/app/cookies.txt') ? { cookies: '/app/cookies.txt' } : {};
     const _ytProxy = process.env.YTDLP_PROXY ? { proxy: process.env.YTDLP_PROXY } : {};`;
 
-// resolve() metodunu patch'le
+// resolve() — sadece metadata, format seçimi yok
 const resolveOld = `const info = await json(url, {
       dumpSingleJson: true,
       noWarnings: true,
@@ -29,12 +30,11 @@ const resolveNew = `${runtimeHelpers}
       dumpSingleJson: true,
       noWarnings: true,
       skipDownload: true,
-      format: "bestaudio/best",
       ..._ytCookies,
       ..._ytProxy
     }).catch((e2) => {`;
 
-// getStreamURL() metodunu patch'le
+// getStreamURL() — esnek format, tüm senaryoları kapsar
 const streamOld = `const info = await json(song.url, {
       dumpSingleJson: true,
       noWarnings: true,
@@ -50,17 +50,17 @@ const streamNew = `${runtimeHelpers}
       dumpSingleJson: true,
       noWarnings: true,
       skipDownload: true,
-      format: "bestaudio/best",
+      format: "bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best",
       ..._ytCookies,
       ..._ytProxy
     }).catch((e2) => {`;
 
 if (!content.includes(resolveOld)) {
-  console.error('[patch-yt-dlp] HATA: resolve() için patch string bulunamadı!');
+  console.error('[patch-yt-dlp] HATA: resolve() patch string bulunamadı!');
   process.exit(1);
 }
 if (!content.includes(streamOld)) {
-  console.error('[patch-yt-dlp] HATA: getStreamURL() için patch string bulunamadı!');
+  console.error('[patch-yt-dlp] HATA: getStreamURL() patch string bulunamadı!');
   process.exit(1);
 }
 
