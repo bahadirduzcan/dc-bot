@@ -164,10 +164,19 @@ class YouTubePlugin extends PlayableExtractorPlugin {
       console.warn('[YouTubePlugin] Data API başarısız, yt-dlp deneniyor:', e.message);
     }
 
-    // 2. yt-dlp fallback
-    const data = await runYtdlp(buildArgs([
-      '--dump-json', '--skip-download', '--flat-playlist', `ytsearch1:${query}`,
-    ]));
+    // 2. yt-dlp fallback — arama için extractor-args ve cookies kullanma
+    const searchArgs = [
+      '--no-warnings',
+      '--dump-json',
+      '--skip-download',
+      '--flat-playlist',
+      '--socket-timeout', '20',
+      '--retries', '2',
+    ];
+    if (process.env.YTDLP_PROXY) searchArgs.push('--proxy', process.env.YTDLP_PROXY);
+    searchArgs.push(`ytsearch1:${query}`);
+
+    const data = await runYtdlp(searchArgs);
     const entry = data.entries?.[0] || data;
     if (!entry?.id) throw new Error(`"${query}" için sonuç bulunamadı`);
     return this._makeSong({ ...entry, webpage_url: `https://www.youtube.com/watch?v=${entry.id}` }, options);
