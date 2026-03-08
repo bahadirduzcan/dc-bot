@@ -2,6 +2,7 @@
  * @distube/yt-dlp plugin'ini patch'ler:
  * - noCallHome kaldırılır (deprecated uyarısını giderir)
  * - preferFreeFormats kaldırılır (format hatasını giderir)
+ * - resolve() ve getStreamURL() için açık format belirtilir
  * - runtime'da /app/cookies.txt varsa otomatik kullanır (auth için)
  * - runtime'da YTDLP_PROXY env varı varsa proxy kullanır
  */
@@ -28,7 +29,7 @@ const resolveNew = `${runtimeHelpers}
       dumpSingleJson: true,
       noWarnings: true,
       skipDownload: true,
-      simulate: true,
+      format: "bestaudio/best",
       ..._ytCookies,
       ..._ytProxy
     }).catch((e2) => {`;
@@ -49,8 +50,7 @@ const streamNew = `${runtimeHelpers}
       dumpSingleJson: true,
       noWarnings: true,
       skipDownload: true,
-      simulate: true,
-      format: "ba/ba*",
+      format: "bestaudio/best",
       ..._ytCookies,
       ..._ytProxy
     }).catch((e2) => {`;

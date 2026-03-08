@@ -28,9 +28,9 @@ function createBot() {
     emitAddListWhenCreatingQueue: true,
     nsfw: false,
     plugins: [
-      new YtDlpPlugin({ update: false }),
       new SpotifyPlugin(),
       new SoundCloudPlugin(),
+      new YtDlpPlugin({ update: false }),
     ],
   });
 
