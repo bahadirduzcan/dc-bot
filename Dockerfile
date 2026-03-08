@@ -2,7 +2,7 @@ FROM node:20-slim
 
 # ffmpeg (ses), tini (düzgün process yönetimi), curl (yt-dlp indirme)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg tini curl ca-certificates \
+    ffmpeg tini curl ca-certificates python3 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
