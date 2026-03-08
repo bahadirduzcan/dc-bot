@@ -1,18 +1,15 @@
 /**
- * @distube/yt-dlp plugin patch:
- * - noCallHome kaldırıldı
- * - preferFreeFormats kaldırıldı
- * - resolve(): noCheckFormats eklendi (datacenter IP'de format kontrol hatası önlenir)
- * - getStreamURL(): esnek format selector
- * - cookies + proxy desteği (runtime env vars)
+ * @distube/yt-dlp plugin minimal patch:
+ * - noCallHome kaldırılır (deprecated uyarısını giderir)
+ * - Proxy desteği eklenir (YTDLP_PROXY env var)
+ * YouTube artık YouTubePlugin (play-dl) tarafından işleniyor.
  */
 const fs = require('fs');
 const PLUGIN_PATH = require('path').join(__dirname, 'node_modules/@distube/yt-dlp/dist/index.js');
 
 let content = fs.readFileSync(PLUGIN_PATH, 'utf-8');
 
-const runtimeHelpers = `const _ytCookies = require('fs').existsSync('/app/cookies.txt') ? { cookies: '/app/cookies.txt' } : {};
-    const _ytProxy = process.env.YTDLP_PROXY ? { proxy: process.env.YTDLP_PROXY } : {};`;
+const proxyHelper = `const _ytProxy = process.env.YTDLP_PROXY ? { proxy: process.env.YTDLP_PROXY } : {};`;
 
 const resolveOld = `const info = await json(url, {
       dumpSingleJson: true,
@@ -23,13 +20,12 @@ const resolveOld = `const info = await json(url, {
       simulate: true
     }).catch((e2) => {`;
 
-const resolveNew = `${runtimeHelpers}
+const resolveNew = `${proxyHelper}
     const info = await json(url, {
       dumpSingleJson: true,
       noWarnings: true,
-      noCheckFormats: true,
       skipDownload: true,
-      ..._ytCookies,
+      simulate: true,
       ..._ytProxy
     }).catch((e2) => {`;
 
@@ -43,14 +39,13 @@ const streamOld = `const info = await json(song.url, {
       format: "ba/ba*"
     }).catch((e2) => {`;
 
-const streamNew = `${runtimeHelpers}
+const streamNew = `${proxyHelper}
     const info = await json(song.url, {
       dumpSingleJson: true,
       noWarnings: true,
-      noCheckFormats: true,
       skipDownload: true,
-      format: "bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best",
-      ..._ytCookies,
+      simulate: true,
+      format: "bestaudio/best",
       ..._ytProxy
     }).catch((e2) => {`;
 
@@ -67,4 +62,4 @@ content = content.replace(resolveOld, resolveNew);
 content = content.replace(streamOld, streamNew);
 
 fs.writeFileSync(PLUGIN_PATH, content);
-console.log('[patch-yt-dlp] Plugin başarıyla patch edildi.');
+console.log('[patch-yt-dlp] Plugin patch edildi (non-YouTube sources için).');
