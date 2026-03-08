@@ -11,7 +11,14 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev
 
-# yt-dlp binary'yi build sırasında indir (her container restart'ta indirmemek için)
+# @distube/yt-dlp plugin'ini patch'le:
+# - noCallHome deprecated uyarısını kaldır
+# - YouTube bot koruması için iOS player client ekle
+# - runtime'da /app/cookies.txt varsa otomatik kullan
+COPY patch-yt-dlp.js ./
+RUN node patch-yt-dlp.js
+
+# yt-dlp binary'yi build sırasında indir
 RUN mkdir -p /app/node_modules/@distube/yt-dlp/bin && \
     curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" \
          -o /app/node_modules/@distube/yt-dlp/bin/yt-dlp && \
@@ -26,5 +33,6 @@ RUN chmod +x /app/entrypoint.sh
 # Data klasörünü oluştur (volume mount noktası)
 RUN mkdir -p data
 
+# entrypoint.sh: YOUTUBE_COOKIES_BASE64 env varından cookie dosyası oluşturur
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["sh", "-c", "node deploy-commands.js && node src/index.js"]
