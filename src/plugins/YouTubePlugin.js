@@ -159,7 +159,8 @@ function ytdlpGetStreamUrl(songUrl, timeoutMs = 45000) {
       '--get-url',
       '-f', '18/bestaudio/best',
     ];
-    if (fs.existsSync(COOKIES_PATH)) streamArgs.push('--cookies', COOKIES_PATH);
+    // Cookies KULLANMA — web client'a zorluyor, format 18 kayboluyor
+    // Proxy varsa ekle
     if (process.env.YTDLP_PROXY) streamArgs.push('--proxy', process.env.YTDLP_PROXY);
     streamArgs.push(songUrl);
     const args = streamArgs;
