@@ -1,4 +1,4 @@
-const { PlayableExtractorPlugin, Song, Playlist, DisTubeError } = require('distube');
+const { ExtractorPlugin, Song, Playlist, DisTubeError } = require('distube');
 const { execFile } = require('child_process');
 const https = require('https');
 const path = require('path');
@@ -135,7 +135,7 @@ function isYouTubeUrl(str) { return /youtube\.com|youtu\.be/i.test(str); }
 
 // ─── Plugin ───────────────────────────────────────────────────────────────────
 
-class YouTubePlugin extends PlayableExtractorPlugin {
+class YouTubePlugin extends ExtractorPlugin {
   validate(url) {
     return isYouTubeUrl(url) || !isUrl(url);
   }
@@ -235,6 +235,15 @@ class YouTubePlugin extends PlayableExtractorPlugin {
       },
       views: data.view_count || 0,
     }, options);
+  }
+
+  // DisTube text search için bu metodu çağırır (ExtractorPlugin)
+  async searchSong(query, options) {
+    try {
+      return await this._search(query, options);
+    } catch {
+      return null;
+    }
   }
 
   async getStreamURL(song) {
