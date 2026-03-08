@@ -4,7 +4,7 @@ const { createErrorEmbed } = require('../../utils/embed');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('play')
-    .setDescription('Şarkı veya playlist çal (YouTube, Spotify, SoundCloud)')
+    .setDescription('Şarkı veya playlist çal (YouTube)')
     .addStringOption(option =>
       option
         .setName('sorgu')

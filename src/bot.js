@@ -1,8 +1,6 @@
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const { DisTube } = require('distube');
 const { YtDlpPlugin } = require('@distube/yt-dlp');
-const { SpotifyPlugin } = require('@distube/spotify');
-const { SoundCloudPlugin } = require('@distube/soundcloud');
 const { YouTubePlugin } = require('./plugins/YouTubePlugin');
 const { loadCommands } = require('./handlers/commandHandler');
 const { loadEvents } = require('./handlers/eventHandler');
@@ -30,8 +28,6 @@ function createBot() {
     nsfw: false,
     plugins: [
       new YouTubePlugin(),
-      new SpotifyPlugin(),
-      new SoundCloudPlugin(),
       new YtDlpPlugin({ update: false }),
     ],
   });
