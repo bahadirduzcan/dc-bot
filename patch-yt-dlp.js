@@ -2,8 +2,7 @@
  * @distube/yt-dlp plugin'ini patch'ler:
  * - noCallHome kaldırılır (deprecated uyarısını giderir)
  * - preferFreeFormats kaldırılır (format hatasını giderir)
- * - extractorArgs eklenir (YouTube bot korumasını atlatır)
- * - runtime'da /app/cookies.txt varsa otomatik kullanır
+ * - runtime'da /app/cookies.txt varsa otomatik kullanır (auth için)
  * - runtime'da YTDLP_PROXY env varı varsa proxy kullanır
  */
 const fs = require('fs');
@@ -15,30 +14,27 @@ const runtimeHelpers = `const _ytCookies = require('fs').existsSync('/app/cookie
     const _ytProxy = process.env.YTDLP_PROXY ? { proxy: process.env.YTDLP_PROXY } : {};`;
 
 // resolve() metodunu patch'le
-content = content.replace(
-  `const info = await json(url, {
+const resolveOld = `const info = await json(url, {
       dumpSingleJson: true,
       noWarnings: true,
       noCallHome: true,
       preferFreeFormats: true,
       skipDownload: true,
       simulate: true
-    }).catch((e2) => {`,
-  `${runtimeHelpers}
+    }).catch((e2) => {`;
+
+const resolveNew = `${runtimeHelpers}
     const info = await json(url, {
       dumpSingleJson: true,
       noWarnings: true,
       skipDownload: true,
       simulate: true,
-      extractorArgs: 'youtube:player_client=ios,mweb',
       ..._ytCookies,
       ..._ytProxy
-    }).catch((e2) => {`
-);
+    }).catch((e2) => {`;
 
 // getStreamURL() metodunu patch'le
-content = content.replace(
-  `const info = await json(song.url, {
+const streamOld = `const info = await json(song.url, {
       dumpSingleJson: true,
       noWarnings: true,
       noCallHome: true,
@@ -46,24 +42,30 @@ content = content.replace(
       skipDownload: true,
       simulate: true,
       format: "ba/ba*"
-    }).catch((e2) => {`,
-  `${runtimeHelpers}
+    }).catch((e2) => {`;
+
+const streamNew = `${runtimeHelpers}
     const info = await json(song.url, {
       dumpSingleJson: true,
       noWarnings: true,
       skipDownload: true,
       simulate: true,
       format: "ba/ba*",
-      extractorArgs: 'youtube:player_client=ios,mweb',
       ..._ytCookies,
       ..._ytProxy
-    }).catch((e2) => {`
-);
+    }).catch((e2) => {`;
 
-if (!content.includes('extractorArgs')) {
-  console.error('[patch-yt-dlp] HATA: Patch uygulanamadı, plugin kaynak kodu beklenenden farklı!');
+if (!content.includes(resolveOld)) {
+  console.error('[patch-yt-dlp] HATA: resolve() için patch string bulunamadı!');
   process.exit(1);
 }
+if (!content.includes(streamOld)) {
+  console.error('[patch-yt-dlp] HATA: getStreamURL() için patch string bulunamadı!');
+  process.exit(1);
+}
+
+content = content.replace(resolveOld, resolveNew);
+content = content.replace(streamOld, streamNew);
 
 fs.writeFileSync(PLUGIN_PATH, content);
 console.log('[patch-yt-dlp] Plugin başarıyla patch edildi.');
