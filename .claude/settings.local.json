@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "Bash(npm install:*)",
+      "Bash(npm view:*)",
+      "Bash(do node:*)",
+      "Bash(cp:*)",
+      "Bash(ls:*)",
+      "Bash(grep \"\"version\"\":*)",
+      "Bash(npm run:*)",
+      "Bash(npm update:*)",
+      "Bash(\"C:/Users/BAHADIR/Desktop/discord-bot/node_modules/@distube/yt-dlp/bin/yt-dlp.exe\":*)",
+      "Bash(for f in src/commands/music/*.js)",
+      "Bash(do echo \"=== $f ===\")",
+      "Read(//c/Users/BAHADIR/Desktop/discord-bot/**)",
+      "Bash(done)"
+    ]
+  }
+}

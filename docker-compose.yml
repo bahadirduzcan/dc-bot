@@ -1,0 +1,14 @@
+services:
+  discord-bot:
+    build: .
+    container_name: zeythan-b
+    restart: unless-stopped
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - CLIENT_ID=${CLIENT_ID}
+      - GUILD_ID=${GUILD_ID}
+    volumes:
+      - bot-data:/app/data
+
+volumes:
+  bot-data:
