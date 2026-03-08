@@ -9,14 +9,13 @@ const COOKIES_PATH = process.env.YOUTUBE_COOKIES_PATH || '/app/cookies.txt';
 
 // ─── YouTube Data API v3 (arama için) ────────────────────────────────────────
 
-function youtubeApiSearch(query) {
+function youtubeApiRequest(apiPath) {
   return new Promise((resolve, reject) => {
     const key = process.env.YOUTUBE_API_KEY;
     if (!key) return reject(new Error('YOUTUBE_API_KEY tanımlı değil'));
-    const qs = `part=snippet&type=video&maxResults=1&q=${encodeURIComponent(query)}&key=${key}`;
     const req = https.request({
       hostname: 'www.googleapis.com',
-      path: `/youtube/v3/search?${qs}`,
+      path: `/youtube/v3/${apiPath}&key=${key}`,
       method: 'GET',
       timeout: 10000,
     }, (res) => {
@@ -26,18 +25,7 @@ function youtubeApiSearch(query) {
         try {
           const json = JSON.parse(data);
           if (json.error) return reject(new Error(json.error.message));
-          const item = json.items?.[0];
-          if (!item) return reject(new Error(`"${query}" için sonuç bulunamadı`));
-          resolve({
-            id: item.id.videoId,
-            title: item.snippet.title,
-            uploader: item.snippet.channelTitle,
-            thumbnail: item.snippet.thumbnails?.medium?.url,
-            webpage_url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-            duration: 0,
-            is_live: false,
-            view_count: 0,
-          });
+          resolve(json);
         } catch { reject(new Error('YouTube API yanıtı parse edilemedi')); }
       });
     });
@@ -45,6 +33,45 @@ function youtubeApiSearch(query) {
     req.on('error', reject);
     req.end();
   });
+}
+
+async function youtubeApiSearch(query) {
+  const json = await youtubeApiRequest(`search?part=snippet&type=video&maxResults=1&q=${encodeURIComponent(query)}`);
+  const item = json.items?.[0];
+  if (!item) throw new Error(`"${query}" için sonuç bulunamadı`);
+  return {
+    id: item.id.videoId,
+    title: item.snippet.title,
+    uploader: item.snippet.channelTitle,
+    thumbnail: item.snippet.thumbnails?.medium?.url,
+    webpage_url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+    duration: 0,
+    is_live: false,
+    view_count: 0,
+  };
+}
+
+function parseIsoDuration(iso) {
+  if (!iso) return 0;
+  const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!m) return 0;
+  return (parseInt(m[1] || 0) * 3600) + (parseInt(m[2] || 0) * 60) + parseInt(m[3] || 0);
+}
+
+async function youtubeApiVideoInfo(videoId) {
+  const json = await youtubeApiRequest(`videos?part=snippet,contentDetails,statistics&id=${videoId}`);
+  const item = json.items?.[0];
+  if (!item) throw new Error(`Video bulunamadı: ${videoId}`);
+  return {
+    id: item.id,
+    title: item.snippet.title,
+    uploader: item.snippet.channelTitle,
+    thumbnail: item.snippet.thumbnails?.medium?.url,
+    webpage_url: `https://www.youtube.com/watch?v=${item.id}`,
+    duration: parseIsoDuration(item.contentDetails?.duration),
+    is_live: item.snippet.liveBroadcastContent === 'live',
+    view_count: parseInt(item.statistics?.viewCount || 0),
+  };
 }
 
 // ─── yt-dlp ──────────────────────────────────────────────────────────────────
@@ -134,6 +161,19 @@ class YouTubePlugin extends PlayableExtractorPlugin {
   }
 
   async _video(url, options) {
+    const videoId = url.match(/(?:v=|youtu\.be\/)([^&?/]+)/)?.[1];
+
+    // YouTube Data API ile metadata al (IP sorunu yok)
+    if (videoId && process.env.YOUTUBE_API_KEY) {
+      try {
+        const data = await youtubeApiVideoInfo(videoId);
+        return this._makeSong(data, options);
+      } catch (e) {
+        console.warn('[YouTubePlugin] API video info başarısız, yt-dlp deneniyor:', e.message);
+      }
+    }
+
+    // Fallback: yt-dlp
     const data = await runYtdlp(buildArgs(['--dump-json', '--skip-download', url]));
     return this._makeSong(data, options);
   }
