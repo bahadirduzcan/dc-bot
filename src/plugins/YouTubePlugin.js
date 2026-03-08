@@ -8,24 +8,21 @@ const { execFile } = require('child_process');
 const https = require('https');
 const path = require('path');
 const fs = require('fs');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 
 const YTDLP_BIN = path.join(__dirname, '../../node_modules/@distube/yt-dlp/bin/yt-dlp');
 const COOKIES_PATH = process.env.YOUTUBE_COOKIES_PATH || '/app/cookies.txt';
 
 // Güvenilir Invidious instance'ları (sırayla denenir)
-const INVIDIOUS_INSTANCES = [
-  'invidious.privacyredirect.com',
-  'invidious.kavin.rocks',
-  'invidious.nerdvpn.de',
-  'invidious.tiekoetter.com',
-  'inv.riverside.rocks',
-  'invidious.fdn.fr',
-  'invidious.io.lol',
-];
+// Test edilmiş çalışanlar: inv.riverside.rocks, iv.melmac.space
+const INVIDIOUS_INSTANCES = (process.env.INVIDIOUS_INSTANCES
+  ? process.env.INVIDIOUS_INSTANCES.split(',').map(s => s.trim())
+  : ['inv.riverside.rocks', 'iv.melmac.space']);
 
-// ─── https modülü ile GET isteği (redirect takipli) ──────────────────────────
+// ─── https modülü ile GET isteği (redirect + proxy destekli) ─────────────────
 
 function httpsGet(host, apiPath, timeoutMs = 12000, redirects = 3) {
+  const proxy = process.env.YTDLP_PROXY || process.env.HTTPS_PROXY;
   return new Promise((resolve, reject) => {
     const req = https.request({
       hostname: host,
@@ -33,6 +30,7 @@ function httpsGet(host, apiPath, timeoutMs = 12000, redirects = 3) {
       method: 'GET',
       headers: { 'User-Agent': 'Mozilla/5.0' },
       timeout: timeoutMs,
+      ...(proxy ? { agent: new HttpsProxyAgent(proxy) } : {}),
     }, (res) => {
       // 301/302 redirect takibi
       if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location && redirects > 0) {
