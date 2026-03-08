@@ -17,6 +17,9 @@ RUN mkdir -p /app/node_modules/@distube/yt-dlp/bin && \
          -o /app/node_modules/@distube/yt-dlp/bin/yt-dlp && \
     chmod +x /app/node_modules/@distube/yt-dlp/bin/yt-dlp
 
+# YouTube bot korumasını atlatmak için iOS player client kullan
+RUN echo '--extractor-args "youtube:player_client=ios,web"' > /etc/yt-dlp.conf
+
 # Kaynak kodunu kopyala
 COPY . .
 
