@@ -103,7 +103,7 @@ function runYtdlp(args, timeoutMs = 45000) {
 
 function ytdlpGetStreamUrl(songUrl, timeoutMs = 45000) {
   return new Promise((resolve, reject) => {
-    const args = buildArgs(['--get-url', '-f', 'bestaudio/best', songUrl]);
+    const args = buildArgs(['--get-url', '-f', 'bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best[height<=480]/best', songUrl]);
     const proc = execFile(YTDLP_BIN, args, { maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
       clearTimeout(timer);
       if (err) return reject(new DisTubeError('YTDLP_ERROR', stderr?.trim() || err.message));
