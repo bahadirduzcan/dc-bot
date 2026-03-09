@@ -11,6 +11,27 @@ const nextSongTimers = new Map();
 const lastNowPlayingMsg = new Map();
 const lastAddSongMsgs = new Map();
 const deleteTimers = new Map();
+const lastAction = new Map();    // guildId -> { userTag, text }
+const actionTimers = new Map();  // guildId -> timeoutId
+
+function setAction(guildId, user, text) {
+  lastAction.set(guildId, { userTag: user.displayName || user.username, text });
+  if (actionTimers.has(guildId)) clearTimeout(actionTimers.get(guildId));
+  const timer = setTimeout(() => {
+    lastAction.delete(guildId);
+    actionTimers.delete(guildId);
+  }, 10000);
+  actionTimers.set(guildId, timer);
+}
+
+function createNowPlayingEmbedWithAction(song, queue, guildId) {
+  const embed = createNowPlayingEmbed(song, queue);
+  const action = lastAction.get(guildId);
+  if (action) {
+    embed.addFields({ name: '🎮 Son İşlem', value: `**${action.userTag}** — ${action.text}`, inline: false });
+  }
+  return embed;
+}
 
 // Kontrol buton satırlarını oluştur
 function createControlRows(queue) {
@@ -88,7 +109,7 @@ async function updateNowPlayingMsg(guildId, distube) {
   const queue = distube.getQueue(guildId);
   if (!queue?.songs[0]) return;
   await msg.edit({
-    embeds: [createNowPlayingEmbed(queue.songs[0], queue)],
+    embeds: [createNowPlayingEmbedWithAction(queue.songs[0], queue, guildId)],
     components: createControlRows(queue),
   }).catch(() => {});
 }
@@ -123,7 +144,7 @@ function setupMusicEvents(client) {
     }
 
     const msg = await queue.textChannel?.send({
-      embeds: [createNowPlayingEmbed(song, queue)],
+      embeds: [createNowPlayingEmbedWithAction(song, queue, queue.id)],
       components: createControlRows(queue),
     }).catch(() => null);
 
@@ -139,7 +160,7 @@ function setupMusicEvents(client) {
           return;
         }
         await msg.edit({
-          embeds: [createNowPlayingEmbed(q.songs[0], q)],
+          embeds: [createNowPlayingEmbedWithAction(q.songs[0], q, queue.id)],
           components: createControlRows(q),
         }).catch(() => clearLive(queue.id));
       }, 5000);
@@ -259,31 +280,43 @@ function setupMusicEvents(client) {
 
       try {
         if (action === 'pause') {
-          if (queue.paused) await queue.resume();
-          else await queue.pause();
+          if (queue.paused) {
+            await queue.resume();
+            setAction(guildId, interaction.user, '▶️ Devam Ettirdi');
+          } else {
+            await queue.pause();
+            setAction(guildId, interaction.user, '⏸️ Duraklatıldı');
+          }
           await updateNowPlayingMsg(guildId, distube);
 
         } else if (action === 'skip') {
+          setAction(guildId, interaction.user, '⏭️ Sonraki Şarkıya Geçti');
           await queue.skip();
           // playSong eventi otomatik yeni mesaj gönderecek
 
         } else if (action === 'prev') {
+          setAction(guildId, interaction.user, '⏮️ Önceki Şarkıya Geçti');
           await queue.previous();
           // playSong eventi otomatik yeni mesaj gönderecek
 
         } else if (action === 'stop') {
+          setAction(guildId, interaction.user, '⏹️ Müziği Durdurdu');
           await queue.stop();
 
         } else if (action === 'replay') {
+          setAction(guildId, interaction.user, '🔄 Şarkıyı Başa Sardı');
           await queue.seek(0);
           await updateNowPlayingMsg(guildId, distube);
 
         } else if (action === 'loop') {
           const next = ((queue.repeatMode ?? 0) + 1) % 3;
           queue.setRepeatMode(next);
+          const loopLabels = ['🔁 Döngü: Kapalı', '🔁 Döngü: Şarkı', '🔁 Döngü: Kuyruk'];
+          setAction(guildId, interaction.user, loopLabels[next]);
           await updateNowPlayingMsg(guildId, distube);
 
         } else if (action === 'shuffle') {
+          setAction(guildId, interaction.user, '🔀 Kuyruğu Karıştırdı');
           await queue.shuffle();
           await updateNowPlayingMsg(guildId, distube);
 

@@ -39,16 +39,8 @@ async function youtubeApiSearch(query) {
   const json = await youtubeApiRequest(`search?part=snippet&type=video&maxResults=1&q=${encodeURIComponent(query)}`);
   const item = json.items?.[0];
   if (!item) throw new Error(`"${query}" için sonuç bulunamadı`);
-  return {
-    id: item.id.videoId,
-    title: item.snippet.title,
-    uploader: item.snippet.channelTitle,
-    thumbnail: item.snippet.thumbnails?.medium?.url,
-    webpage_url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-    duration: 0,
-    is_live: false,
-    view_count: 0,
-  };
+  // Süre (duration) için tam video bilgisini al
+  return youtubeApiVideoInfo(item.id.videoId);
 }
 
 function parseIsoDuration(iso) {
