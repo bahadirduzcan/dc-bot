@@ -73,7 +73,7 @@ function buildArgs(extra = []) {
     '--no-warnings',
     '--socket-timeout', '20',
     '--retries', '2',
-    '--extractor-args', 'youtube:player_client=web',
+    '--extractor-args', 'youtube:player_client=android,web',
     ...extra,
   ];
   if (fs.existsSync(COOKIES_PATH)) args.push('--cookies', COOKIES_PATH);
@@ -100,11 +100,11 @@ function ytdlpGetStreamUrl(songUrl, timeoutMs = 45000) {
       '--no-warnings',
       '--no-check-formats',
       '--socket-timeout', '20',
-      '--retries', '2',
+      '--retries', '3',
+      '--extractor-args', 'youtube:player_client=android,web',
       '--get-url',
-      '-f', '18/bestaudio/best',
+      '-f', 'bestaudio[ext=webm]/bestaudio/best',
     ];
-    // Cookies KULLANMA — web client'a zorluyor, format 18 kayboluyor
     // Proxy varsa ekle
     if (process.env.YTDLP_PROXY) streamArgs.push('--proxy', process.env.YTDLP_PROXY);
     streamArgs.push(songUrl);
