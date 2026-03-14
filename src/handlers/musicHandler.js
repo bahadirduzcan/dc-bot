@@ -11,8 +11,9 @@ const nextSongTimers = new Map();
 const lastNowPlayingMsg = new Map();
 const lastAddSongMsgs = new Map();
 const deleteTimers = new Map();
-const lastAction = new Map();    // guildId -> { userTag, text }
-const actionTimers = new Map();  // guildId -> timeoutId
+const lastAction = new Map();       // guildId -> { userTag, text }
+const actionTimers = new Map();     // guildId -> timeoutId
+const inactivityTimeouts = new Map(); // guildId -> timeoutId (kuyruk bitince 5dk inactivity)
 
 function setAction(guildId, user, text) {
   lastAction.set(guildId, { userTag: user.displayName || user.username, text });
@@ -119,6 +120,11 @@ function setupMusicEvents(client) {
 
   // Şarkı başladığında
   distube.on('playSong', async (queue, song) => {
+    // Inactivity timeout varsa iptal et (yeni şarkı başladı)
+    if (inactivityTimeouts.has(queue.id)) {
+      clearTimeout(inactivityTimeouts.get(queue.id));
+      inactivityTimeouts.delete(queue.id);
+    }
     addToHistory(queue.id, song);
     clearLive(queue.id);
 
@@ -244,12 +250,35 @@ function setupMusicEvents(client) {
       embeds: [new EmbedBuilder().setColor(0xFF6B6B).setTitle('✅ Kuyruk Bitti')
         .setDescription('Tüm şarkılar çalındı. Yeni şarkı için `/play` kullan!').setTimestamp()],
     }).then(m => setTimeout(() => m?.delete().catch(() => {}), 30000)).catch(() => {});
+
+    // 5 dakika sonra ses kanalından çık (biri olsa da olmasa da)
+    const guildId = queue.id;
+    const textChannel = queue.textChannel;
+    const guild = queue.voice?.channel?.guild;
+    if (inactivityTimeouts.has(guildId)) clearTimeout(inactivityTimeouts.get(guildId));
+    const timeout = setTimeout(async () => {
+      inactivityTimeouts.delete(guildId);
+      // Hala kuyruk yoksa çık
+      if (distube.getQueue(guildId)) return;
+      const botMember = guild?.members?.me;
+      if (!botMember?.voice?.channel) return;
+      await botMember.voice.disconnect().catch(() => {});
+      textChannel?.send({
+        embeds: [{ color: 0xED4245, title: '👋 Boşta Beklemekten Sıkıldım', description: '5 dakika şarkı çalmadı, ayrılıyorum. Yeni şarkı için `/play` kullan!' }],
+      }).then(m => setTimeout(() => m?.delete().catch(() => {}), 15000)).catch(() => {});
+    }, 5 * 60 * 1000);
+    inactivityTimeouts.set(guildId, timeout);
   });
 
   distube.on('disconnect', async (queue) => {
-    clearLive(queue.id);
-    await deleteOldMessage(queue.id);
-    await deleteOldAddSongMsgs(queue.id);
+    const guildId = queue.id;
+    // Tüm timer'ları temizle
+    clearLive(guildId);
+    if (nextSongTimers.has(guildId)) { clearTimeout(nextSongTimers.get(guildId)); nextSongTimers.delete(guildId); }
+    if (deleteTimers.has(guildId)) { clearTimeout(deleteTimers.get(guildId)); deleteTimers.delete(guildId); }
+    if (inactivityTimeouts.has(guildId)) { clearTimeout(inactivityTimeouts.get(guildId)); inactivityTimeouts.delete(guildId); }
+    await deleteOldMessage(guildId);
+    await deleteOldAddSongMsgs(guildId);
     queue.textChannel?.send({
       embeds: [new EmbedBuilder().setColor(0xFF6B6B).setTitle('👋 Ses Kanalından Ayrıldım')
         .setDescription('Görüşürüz!').setTimestamp()],

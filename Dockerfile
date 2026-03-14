@@ -33,6 +33,10 @@ RUN chmod +x /app/entrypoint.sh
 # Data klasörünü oluştur (volume mount noktası)
 RUN mkdir -p data
 
+# Health check - bot hazır olana kadar 30sn bekle, her 30sn kontrol et
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
 # entrypoint.sh: YOUTUBE_COOKIES_BASE64 env varından cookie dosyası oluşturur
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["sh", "-c", "node deploy-commands.js && node src/index.js"]
+CMD ["sh", "-c", "node --max-old-space-size=512 deploy-commands.js && node --max-old-space-size=512 src/index.js"]
